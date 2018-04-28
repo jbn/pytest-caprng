@@ -61,6 +61,13 @@ And for ``np.random``::
 
     $ pytest --capture-np-rng
 
+You probably should add the option to your pytest.ini file::
+
+    [pytest]
+    addopts = --capture-rng --capture-np-rng
+
+so that you don't "miss" reproducible errors.
+
 Contributing
 ------------
 Contributions are very welcome. Tests can be run with ``tox``, please ensure
