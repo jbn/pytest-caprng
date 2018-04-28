@@ -21,9 +21,9 @@ def test_np_random_state_serialization():
     bak_state = pytest_caprng.to_json_serializable_np_random_state(orig_state)
 
     # =========================================================================
-    # Mutate the state and take a sample. MT has a very long period. The
+    # mutate the state and take a sample. mt has a very long period. the
     # probability of two equal floating point samples is very, very low.
-    # Since I'm not sure if the state structure will change and testing for
+    # since i'm not sure if the state structure will change and testing for
     # array equality requires array comparisons not the == operator, this
     # is a cleaner test.
     # =========================================================================

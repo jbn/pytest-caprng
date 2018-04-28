@@ -2,7 +2,14 @@
 
 import pytest
 import random
-import numpy as np
+
+
+# =============================================================================
+
+
+__version__ = "0.0.2"
+RNG_STATES_K = 'caprng/rng_states'
+NP_RNG_STATES_K = 'caprng/np_rng_states'
 
 
 def pytest_addoption(parser):
@@ -16,19 +23,46 @@ def pytest_addoption(parser):
                     action='store_true',
                     help="Cache np.random's state for replay on failure.")
 
-# =============================================================================
+
+class CapRNGReportCapture:
+
+    # =========================================================================
+    # I'm still pawing my way through pytest. But, I ran into this thread:
+    #
+    #     https://github.com/pytest-dev/pytest/issues/230
+    #
+    # which inspired the current implementation. The gist is that
+    # using this hook grants access to the success or failure of a test,
+    # which allows me to serialize state to disk ONLY if the test failed.
+    # =========================================================================
+
+    @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+    def pytest_runtest_makereport(self, item, call):
+        outcome = yield
+        rep = outcome.get_result()
+        setattr(item, "rep_" + rep.when, rep)
 
 
-@pytest.hookimpl(hookwrapper=True, tryfirst=True)
-def pytest_runtest_makereport(item, call):
-    outcome = yield
-    rep = outcome.get_result()
-    setattr(item, "rep_" + rep.when, rep)
+def pytest_configure(config):
+    # =========================================================================
+    # This loads plugins via classes as modules *only* when requested.
+    # The serialization / deserialization of PRNGs isn't expensive for most
+    # projects. But, it can be and unless your doing stochastic testing,
+    # it's unnessessary.
+    # =========================================================================
+    requested_caches = []
 
+    if config.getoption('--capture-rng'):
+        requested_caches.append(CapRNGRandom)
 
-# =============================================================================
-# random based.
-# =============================================================================
+    if config.getoption('--capture-np-rng'):
+        requested_caches.append(CapRNGNPRandom)
+
+    if requested_caches:
+        config.pluginmanager.register(CapRNGReportCapture())
+
+        for cls in requested_caches:
+            config.pluginmanager.register(cls())
 
 
 def to_random_state(obj):
@@ -39,30 +73,28 @@ def to_random_state(obj):
     return [tuple(el) if isinstance(el, list) else el for el in obj]
 
 
-@pytest.fixture(scope='session')
-def rng_state_cache(request):
-    k = 'caprng/prng_states'
+class CapRNGRandom:
 
-    d = request.config.cache.get(k, {})
-    yield d
-    request.config.cache.set(k, d)
+    @pytest.fixture(scope='session')
+    def rng_state_cache(self, request):
+        d = request.config.cache.get(RNG_STATES_K, {})
+        yield d
+        request.config.cache.set(RNG_STATES_K, d)
 
+    @pytest.fixture(autouse=True)
+    def capture_rng(self, request, rng_state_cache):
+        k = request.node.nodeid
 
-@pytest.fixture(autouse=True)
-def capture_rng(request, rng_state_cache):
-    # if request.config.getoption('capture-rng'):
-    k = request.node.nodeid
+        last_state = rng_state_cache.get(k)
+        if last_state is not None:
+            random.setstate(to_random_state(last_state))
+        else:
+            rng_state_cache[k] = random.getstate()
 
-    last_state = rng_state_cache.get(k)
-    if last_state is not None:
-        random.setstate(to_random_state(last_state))
-    else:
-        rng_state_cache[k] = random.getstate()
+        yield
 
-    yield
-
-    if not request.node.rep_call.failed:
-        del rng_state_cache[k]
+        if not request.node.rep_call.failed:
+            del rng_state_cache[k]
 
 
 # =============================================================================
@@ -79,27 +111,30 @@ def to_json_serializable_np_random_state(state):
     return [el.tolist() if hasattr(el, 'tolist') else el for el in state]
 
 
-@pytest.fixture(scope='session')
-def np_rng_state_cache(request):
-    # if request.config.getoption('random_replay'):
-    k = 'caprng/np_prng_states'
-    d = request.config.cache.get(k, {})
-    yield d
-    request.config.cache.set(k, d)
+class CapRNGNPRandom:
 
+    def __init__(self):
+        import numpy as np
+        self.np = np
 
-@pytest.fixture(autouse=True)
-def capture_np_rng(request, np_rng_state_cache):
-    k = request.node.nodeid
+    @pytest.fixture(scope='session')
+    def np_rng_state_cache(self, request):
+        d = request.config.cache.get(NP_RNG_STATES_K, {})
+        yield d
+        request.config.cache.set(NP_RNG_STATES_K, d)
 
-    last_state = np_rng_state_cache.get(k)
-    if last_state is not None:
-        np.random.set_state(last_state)
-    else:
-        state = np.random.get_state()
-        np_rng_state_cache[k] = to_json_serializable_np_random_state(state)
+    @pytest.fixture(autouse=True)
+    def capture_np_rng(self, request, np_rng_state_cache):
+        k = request.node.nodeid
 
-    yield
+        last_state = np_rng_state_cache.get(k)
+        if last_state is not None:
+            self.np.random.set_state(last_state)
+        else:
+            state = self.np.random.get_state()
+            np_rng_state_cache[k] = to_json_serializable_np_random_state(state)
 
-    if not request.node.rep_call.failed:
-        del np_rng_state_cache[k]
+        yield
+
+        if not request.node.rep_call.failed:
+            del np_rng_state_cache[k]
