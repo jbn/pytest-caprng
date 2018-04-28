@@ -18,10 +18,6 @@ pytest-caprng
     :target: https://ci.appveyor.com/project/jbn/pytest-caprng/branch/master
     :alt: See Build Status on AppVeyor
 
-.. image:: https://coveralls.io/repos/github/jbn/pytest-caprng/badge.svg?branch=master
-    :target: https://coveralls.io/github/jbn/pytest-caprng?branch=master
-    :alt: See Coverage on Coveralls
-
 
 A plugin that replays pRNG state on failure.
 
