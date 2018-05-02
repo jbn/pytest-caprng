@@ -7,7 +7,7 @@ import random
 # =============================================================================
 
 
-__version__ = "0.0.2"
+__version__ = "0.1.0"
 RNG_STATES_K = 'caprng/rng_states'
 NP_RNG_STATES_K = 'caprng/np_rng_states'
 
@@ -15,11 +15,11 @@ NP_RNG_STATES_K = 'caprng/np_rng_states'
 def pytest_addoption(parser):
     group = parser.getgroup('caprng')
 
-    group.addoption('--capture-rng',
+    group.addoption('--caprng-global-stdlib',
                     action='store_true',
                     help="Cache random's state for replay on failure.")
 
-    group.addoption('--capture-np-rng',
+    group.addoption('--caprng-global-np',
                     action='store_true',
                     help="Cache np.random's state for replay on failure.")
 
@@ -52,11 +52,11 @@ def pytest_configure(config):
     # =========================================================================
     requested_caches = []
 
-    if config.getoption('--capture-rng'):
-        requested_caches.append(CapRNGRandom)
+    if config.getoption('--caprng-global-stdlib'):
+        requested_caches.append(CapGlobalStdlibRNG)
 
-    if config.getoption('--capture-np-rng'):
-        requested_caches.append(CapRNGNPRandom)
+    if config.getoption('--caprng-global-np'):
+        requested_caches.append(CapGlobalNpRNG)
 
     if requested_caches:
         config.pluginmanager.register(CapRNGReportCapture())
@@ -73,7 +73,7 @@ def to_random_state(obj):
     return [tuple(el) if isinstance(el, list) else el for el in obj]
 
 
-class CapRNGRandom:
+class CapGlobalStdlibRNG:
 
     @pytest.fixture(scope='session')
     def rng_state_cache(self, request):
@@ -111,7 +111,7 @@ def to_json_serializable_np_random_state(state):
     return [el.tolist() if hasattr(el, 'tolist') else el for el in state]
 
 
-class CapRNGNPRandom:
+class CapGlobalNpRNG:
 
     def __init__(self):
         import numpy as np

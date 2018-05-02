@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name='pytest-caprng',
-    version='0.0.2',
+    version='0.1.0',
     author='John Bjorn Nelson',
     author_email='jbn@abreka.com',
     maintainer='John Bjorn Nelson',

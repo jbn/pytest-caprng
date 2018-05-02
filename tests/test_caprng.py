@@ -12,8 +12,8 @@ def test_help_message(testdir):
 
     result.stdout.fnmatch_lines([
         'caprng:',
-        "*--capture-rng*Cache random's state*",
-        "*--capture-np-rng*Cache np.random's state*",
+        "*--caprng-global-stdlib*", "*Cache random's state*",
+        "*--caprng-global-np*Cache np.random's state*",
     ])
 
 
@@ -26,7 +26,7 @@ def test_random_reproducibility(testdir):
             assert random.random() == -1.0
     """)
 
-    result = testdir.runpytest('--capture-rng')
+    result = testdir.runpytest('--caprng-global-stdlib')
     assert result.ret == 1, "It should fail the first time."
     first_error = RANDOM_ERROR_RE.search(result.stdout.str()).group(0)
 
@@ -45,7 +45,7 @@ def test_np_random_reproducibility(testdir):
             assert np.random.random() == -1.0
     """)
 
-    result = testdir.runpytest('--capture-np-rng')
+    result = testdir.runpytest('--caprng-global-np')
     assert result.ret == 1, "It should fail the first time."
     first_error = NP_RANDOM_ERROR_RE.search(result.stdout.str()).group(0)
 

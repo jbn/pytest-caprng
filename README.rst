@@ -55,16 +55,16 @@ Usage
 
 For ``random``-based state capturing::
 
-    $ pytest --capture-rng
+    $ pytest --caprng-global-stdlib
 
 And for ``np.random``::
 
-    $ pytest --capture-np-rng
+    $ pytest --caprng-global-np
 
-You probably should add the option to your pytest.ini file::
+You probably should add the option to your pytest.ini file:
 
     [pytest]
-    addopts = --capture-rng --capture-np-rng
+    addopts = --caprng-global-stdlib --caprng-global-np
 
 so that you don't "miss" reproducible errors.
 
